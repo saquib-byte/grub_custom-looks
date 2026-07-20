@@ -1,0 +1,20 @@
+# Ignore downloaded theme repos (they have their own repos)
+themes/grub2-themes
+themes/catppuccin
+themes/darkmatter
+themes/elegant-grub2-themes
+themes/sleek-themes
+
+# Ignore custom wallpapers people drop in (personal files)
+wallpapers/custom/*
+icons/custom/*
+
+# Keep the custom folders themselves
+!wallpapers/custom/.gitkeep
+!icons/custom/.gitkeep
+
+# OS junk
+.DS_Store
+Thumbs.db
+*.swp
+*~

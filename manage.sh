@@ -1,0 +1,390 @@
+#!/usr/bin/env bash
+# ============================================================
+#  grub_custom-looks — manage.sh
+#  A personal GRUB bootloader theme manager for Linux Mint
+#  GitHub: https://github.com/YOUR_USERNAME/grub_custom-looks
+#
+#  Usage:
+#    ./manage.sh              → Interactive menu
+#    sudo ./manage.sh --apply → Apply config.cfg silently
+#    ./manage.sh --list       → List all available options
+#    ./manage.sh --download   → Download / update all theme repos
+# ============================================================
+
+set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG="$SCRIPT_DIR/config.cfg"
+REPO_NAME="grub_custom-looks"
+
+# ── Colors ───────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
+
+# ── Load config ──────────────────────────────────────────────
+[[ ! -f "$CONFIG" ]] && { echo "config.cfg not found in $SCRIPT_DIR"; exit 1; }
+source "$CONFIG"
+
+# ── Helpers ──────────────────────────────────────────────────
+info()    { echo -e "${CYAN}[INFO]${NC}  $*"; }
+success() { echo -e "${GREEN}[OK]${NC}    $*"; }
+warn()    { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+error()   { echo -e "${RED}[ERR]${NC}   $*"; exit 1; }
+
+require_root() {
+    [[ "$EUID" -ne 0 ]] && error "This action requires root. Run: sudo ./manage.sh $*"
+}
+
+# ── Theme registry ───────────────────────────────────────────
+# Format: "Display Name|source_subfolder_in_themes/|install_type"
+declare -A THEMES=(
+    ["tela"]="Tela|grub2-themes|vinceliuice"
+    ["vimix"]="Vimix|grub2-themes|vinceliuice"
+    ["stylish"]="Stylish|grub2-themes|vinceliuice"
+    ["whitesur"]="WhiteSur|grub2-themes|vinceliuice"
+    ["catppuccin-mocha"]="Catppuccin Mocha|catppuccin|catppuccin"
+    ["catppuccin-latte"]="Catppuccin Latte|catppuccin|catppuccin"
+    ["catppuccin-frappe"]="Catppuccin Frappé|catppuccin|catppuccin"
+    ["catppuccin-macchiato"]="Catppuccin Macchiato|catppuccin|catppuccin"
+    ["darkmatter"]="Dark Matter|darkmatter|darkmatter"
+    ["elegant-blur"]="Elegant Blur|elegant-grub2-themes|elegant"
+    ["elegant-dark"]="Elegant Dark|elegant-grub2-themes|elegant"
+    ["sleek-dark"]="Sleek Dark|sleek-themes|sleek"
+    ["sleek-light"]="Sleek Light|sleek-themes|sleek"
+    ["sleek-orange"]="Sleek Orange|sleek-themes|sleek"
+)
+
+# ── Repo URLs ────────────────────────────────────────────────
+declare -A REPOS=(
+    ["grub2-themes"]="https://github.com/vinceliuice/grub2-themes.git"
+    ["catppuccin"]="https://github.com/catppuccin/grub.git"
+    ["darkmatter"]="https://github.com/VandalByte/darkmatter-grub2-theme.git"
+    ["elegant-grub2-themes"]="https://github.com/vinceliuice/Elegant-grub2-themes.git"
+    ["sleek-themes"]="https://github.com/sandesh236/sleek--themes.git"
+)
+
+# ════════════════════════════════════════════════════════════
+# LIST
+# ════════════════════════════════════════════════════════════
+cmd_list() {
+    echo -e "\n${BOLD}╔══════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║  🎨  grub_custom-looks — Available Options   ║${NC}"
+    echo -e "${BOLD}╚══════════════════════════════════════════════╝${NC}"
+
+    echo -e "\n${BOLD}━━━ Themes ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "  ${BOLD}Key (use in config.cfg)         Display Name         Status${NC}"
+    for key in $(echo "${!THEMES[@]}" | tr ' ' '\n' | sort); do
+        IFS='|' read -r name src type <<< "${THEMES[$key]}"
+        local src_dir="$SCRIPT_DIR/themes/$src"
+        local status
+        [[ -d "$src_dir" ]] && status="${GREEN}✓ ready${NC}" || status="${YELLOW}⬇ run --download${NC}"
+        printf "  %-32s %-22s %b\n" "$key" "$name" "$status"
+    done
+
+    echo -e "\n${BOLD}━━━ Wallpapers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "  ${CYAN}auto${NC}  → use the theme's own bundled wallpaper"
+    find "$SCRIPT_DIR/wallpapers" -maxdepth 2 -type f \( -iname "*.jpg" -o -iname "*.png" \) 2>/dev/null \
+        | sort | while read -r f; do
+        echo "  $(basename "$f")  ($(du -h "$f" | cut -f1))"
+    done
+
+    echo -e "\n${BOLD}━━━ Icon Styles ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo "  color      → Colorful OS icons"
+    echo "  white      → White/monochrome OS icons"
+    echo "  whitesur   → macOS-style icons"
+
+    echo -e "\n${BOLD}━━━ Active Configuration (config.cfg) ━━━━━━━━━━━━━━━━━━━${NC}"
+    echo "  Theme      : $ACTIVE_THEME"
+    echo "  Wallpaper  : $ACTIVE_WALL"
+    echo "  Icons      : $ACTIVE_ICONS"
+    echo "  Resolution : $RESOLUTION"
+    echo ""
+}
+
+# ════════════════════════════════════════════════════════════
+# DOWNLOAD
+# ════════════════════════════════════════════════════════════
+cmd_download() {
+    mkdir -p "$SCRIPT_DIR/themes"
+
+    # Symlink existing ~/grub2-themes if present and not already linked
+    if [[ -d "$HOME/grub2-themes" && ! -e "$SCRIPT_DIR/themes/grub2-themes" ]]; then
+        ln -sf "$HOME/grub2-themes" "$SCRIPT_DIR/themes/grub2-themes"
+        info "Symlinked existing ~/grub2-themes → themes/grub2-themes"
+    fi
+
+    echo -e "\n${BOLD}Downloading / updating all theme repos...${NC}\n"
+    for repo_name in "${!REPOS[@]}"; do
+        local url="${REPOS[$repo_name]}"
+        local dest="$SCRIPT_DIR/themes/$repo_name"
+
+        # Skip grub2-themes if it's already a symlink
+        [[ -L "$dest" ]] && { info "Skipping $repo_name (using existing symlink)"; continue; }
+
+        if [[ -d "$dest/.git" ]]; then
+            info "Updating $repo_name..."
+            git -C "$dest" pull --quiet && success "$repo_name updated"
+        else
+            info "Cloning $repo_name..."
+            git clone --depth=1 "$url" "$dest" --quiet && success "$repo_name downloaded"
+        fi
+    done
+    echo ""
+    success "All theme repos are ready. Run './manage.sh --list' to see them."
+}
+
+# ════════════════════════════════════════════════════════════
+# INSTALLERS per theme type
+# ════════════════════════════════════════════════════════════
+
+install_vinceliuice() {
+    local theme="$1" icons="$2" res="$3"
+    local src="$SCRIPT_DIR/themes/grub2-themes"
+    [[ ! -d "$src" ]] && error "grub2-themes not found. Run: ./manage.sh --download"
+    info "Installing $theme (icons: $icons, res: $res)..."
+    bash "$src/install.sh" -t "$theme" -i "$icons" -s "$res"
+}
+
+install_catppuccin() {
+    local variant="$1"
+    local src="$SCRIPT_DIR/themes/catppuccin"
+    [[ ! -d "$src" ]] && error "Catppuccin not found. Run: ./manage.sh --download"
+    local theme_dir="$src/src/catppuccin-${variant}-grub-theme"
+    [[ ! -d "$theme_dir" ]] && error "Catppuccin variant '$variant' not found in repo"
+    info "Installing Catppuccin $variant..."
+    mkdir -p "$GRUB_THEMES_DIR/catppuccin-${variant}"
+    cp -r "$theme_dir/." "$GRUB_THEMES_DIR/catppuccin-${variant}/"
+    success "Catppuccin $variant installed"
+}
+
+install_darkmatter() {
+    local src="$SCRIPT_DIR/themes/darkmatter"
+    [[ ! -d "$src" ]] && error "Dark Matter not found. Run: ./manage.sh --download"
+    info "Installing Dark Matter..."
+    bash "$src/install.sh" -t "darkmatter"
+    success "Dark Matter installed"
+}
+
+install_elegant() {
+    local variant="$1"
+    local src="$SCRIPT_DIR/themes/elegant-grub2-themes"
+    [[ ! -d "$src" ]] && error "Elegant themes not found. Run: ./manage.sh --download"
+    info "Installing Elegant $variant..."
+    bash "$src/install.sh" -t "$variant" -s "$RESOLUTION"
+    success "Elegant $variant installed"
+}
+
+install_sleek() {
+    local variant="$1"
+    local src="$SCRIPT_DIR/themes/sleek-themes"
+    [[ ! -d "$src" ]] && error "Sleek themes not found. Run: ./manage.sh --download"
+    local theme_dir
+    case "$variant" in
+        dark)   theme_dir="$src/Sleek theme-dark" ;;
+        light)  theme_dir="$src/Sleek theme-light" ;;
+        orange) theme_dir="$src/Sleek theme-orange" ;;
+        *)      error "Unknown Sleek variant: $variant" ;;
+    esac
+    info "Installing Sleek $variant..."
+    mkdir -p "$GRUB_THEMES_DIR/sleek-$variant"
+    cp -r "$theme_dir/." "$GRUB_THEMES_DIR/sleek-$variant/"
+    success "Sleek $variant installed to $GRUB_THEMES_DIR/sleek-$variant"
+}
+
+# ════════════════════════════════════════════════════════════
+# WALLPAPER
+# ════════════════════════════════════════════════════════════
+apply_wallpaper() {
+    local theme_install_name="$1"
+    local theme_dir="$GRUB_THEMES_DIR/$theme_install_name"
+
+    [[ "$ACTIVE_WALL" == "auto" ]] && { info "Using theme's bundled wallpaper"; return; }
+
+    local wall_file=""
+    if   [[ -f "$SCRIPT_DIR/wallpapers/$ACTIVE_WALL" ]];        then wall_file="$SCRIPT_DIR/wallpapers/$ACTIVE_WALL"
+    elif [[ -f "$SCRIPT_DIR/wallpapers/custom/$ACTIVE_WALL" ]]; then wall_file="$SCRIPT_DIR/wallpapers/custom/$ACTIVE_WALL"
+    elif [[ -f "$CUSTOM_WALL_PATH/$ACTIVE_WALL" ]];             then wall_file="$CUSTOM_WALL_PATH/$ACTIVE_WALL"
+    elif [[ -f "$ACTIVE_WALL" ]];                               then wall_file="$ACTIVE_WALL"
+    else warn "Wallpaper '$ACTIVE_WALL' not found — skipping"; return
+    fi
+
+    local bg_name
+    bg_name=$(grep "desktop-image" "$theme_dir/theme.txt" 2>/dev/null \
+              | grep -o '"[^"]*"' | tr -d '"' | head -1)
+    bg_name="${bg_name:-background.jpg}"
+
+    info "Applying wallpaper: $(basename "$wall_file") → $theme_dir/$bg_name"
+    cp "$wall_file" "$theme_dir/$bg_name"
+    success "Wallpaper applied"
+}
+
+# ════════════════════════════════════════════════════════════
+# SET GRUB_THEME in /etc/default/grub
+# ════════════════════════════════════════════════════════════
+set_grub_theme() {
+    local theme_path="$1"
+    if grep -q "^GRUB_THEME=" "$GRUB_CONFIG"; then
+        sed -i "s|^GRUB_THEME=.*|GRUB_THEME=\"$theme_path\"|" "$GRUB_CONFIG"
+    else
+        echo "GRUB_THEME=\"$theme_path\"" >> "$GRUB_CONFIG"
+    fi
+    success "GRUB_THEME set → $theme_path"
+}
+
+# ════════════════════════════════════════════════════════════
+# APPLY
+# ════════════════════════════════════════════════════════════
+cmd_apply() {
+    require_root
+    local key="$ACTIVE_THEME"
+    [[ -z "${THEMES[$key]+_}" ]] && error "Unknown theme: '$key'. Run './manage.sh --list' to see all options."
+
+    IFS='|' read -r display_name src_folder install_type <<< "${THEMES[$key]}"
+    echo -e "\n${BOLD}Applying: $display_name${NC}\n"
+
+    local installed_name=""
+
+    case "$install_type" in
+        vinceliuice)
+            install_vinceliuice "$key" "$ACTIVE_ICONS" "$RESOLUTION"
+            installed_name="$key"
+            ;;
+        catppuccin)
+            local variant="${key#catppuccin-}"
+            install_catppuccin "$variant"
+            installed_name="catppuccin-$variant"
+            ;;
+        darkmatter)
+            install_darkmatter
+            installed_name="darkmatter"
+            ;;
+        elegant)
+            local variant="${key#elegant-}"
+            install_elegant "$variant"
+            installed_name="Elegant-$variant"
+            ;;
+        sleek)
+            local variant="${key#sleek-}"
+            install_sleek "$variant"
+            installed_name="sleek-$variant"
+            ;;
+        *)
+            error "Unknown install type: $install_type"
+            ;;
+    esac
+
+    apply_wallpaper "$installed_name"
+    set_grub_theme "$GRUB_THEMES_DIR/$installed_name/theme.txt"
+
+    info "Rebuilding GRUB config..."
+    update-grub
+
+    echo ""
+    echo -e "${BOLD}${GREEN}✓ Done!${NC} Theme '${BOLD}$display_name${NC}' is now active."
+    echo -e "  Reboot to see your new GRUB look.\n"
+}
+
+# ════════════════════════════════════════════════════════════
+# INTERACTIVE MENU
+# ════════════════════════════════════════════════════════════
+cmd_interactive() {
+    echo -e "\n${BOLD}╔══════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║  🎨  grub_custom-looks                       ║${NC}"
+    echo -e "${BOLD}║  GRUB Theme Manager for Linux Mint           ║${NC}"
+    echo -e "${BOLD}╚══════════════════════════════════════════════╝${NC}\n"
+    echo "  1)  List all themes, wallpapers, icons & current config"
+    echo "  2)  Download / update all theme repos"
+    echo "  3)  Apply current config.cfg settings"
+    echo "  4)  Quick-switch theme interactively"
+    echo "  5)  Change wallpaper"
+    echo "  6)  Change icon style"
+    echo "  7)  Exit"
+    echo ""
+    read -rp "  Choose [1-7]: " choice
+
+    case "$choice" in
+        1) cmd_list ;;
+        2) cmd_download ;;
+        3) cmd_apply ;;
+
+        4)
+            require_root
+            echo -e "\n${BOLD}Available themes:${NC}"
+            for key in $(echo "${!THEMES[@]}" | tr ' ' '\n' | sort); do
+                IFS='|' read -r name _ _ <<< "${THEMES[$key]}"
+                printf "  %-30s %s\n" "$key" "($name)"
+            done
+            echo ""
+            read -rp "  Enter theme key: " new_theme
+            [[ -z "${THEMES[$new_theme]+_}" ]] && { warn "Unknown theme key."; return; }
+            echo ""
+            echo "  Icon styles: color | white | whitesur"
+            read -rp "  Icon style [$ACTIVE_ICONS]: " new_icons
+            new_icons="${new_icons:-$ACTIVE_ICONS}"
+            sed -i "s|^ACTIVE_THEME=.*|ACTIVE_THEME=\"$new_theme\"|" "$CONFIG"
+            sed -i "s|^ACTIVE_ICONS=.*|ACTIVE_ICONS=\"$new_icons\"|" "$CONFIG"
+            source "$CONFIG"
+            cmd_apply
+            ;;
+
+        5)
+            require_root
+            echo -e "\n${BOLD}Available wallpapers:${NC}"
+            echo "  auto  → theme's bundled wallpaper"
+            find "$SCRIPT_DIR/wallpapers" -maxdepth 2 -type f \( -iname "*.jpg" -o -iname "*.png" \) \
+                | sort | while read -r f; do echo "  $(basename "$f")"; done
+            echo ""
+            echo "  To add your own: copy a 1080p JPG/PNG to wallpapers/custom/"
+            echo ""
+            read -rp "  Enter wallpaper filename (or 'auto'): " new_wall
+            sed -i "s|^ACTIVE_WALL=.*|ACTIVE_WALL=\"$new_wall\"|" "$CONFIG"
+            source "$CONFIG"
+            cmd_apply
+            ;;
+
+        6)
+            require_root
+            echo -e "\n  Icon styles: color | white | whitesur"
+            read -rp "  Icon style [$ACTIVE_ICONS]: " new_icons
+            new_icons="${new_icons:-$ACTIVE_ICONS}"
+            sed -i "s|^ACTIVE_ICONS=.*|ACTIVE_ICONS=\"$new_icons\"|" "$CONFIG"
+            source "$CONFIG"
+            cmd_apply
+            ;;
+
+        7) exit 0 ;;
+        *) warn "Invalid choice" ;;
+    esac
+}
+
+# ════════════════════════════════════════════════════════════
+# ENTRY POINT
+# ════════════════════════════════════════════════════════════
+
+# Ensure folders exist
+mkdir -p "$SCRIPT_DIR/themes" \
+         "$SCRIPT_DIR/wallpapers/custom" \
+         "$SCRIPT_DIR/icons/custom"
+
+# Auto-symlink existing ~/grub2-themes on first run
+if [[ -d "$HOME/grub2-themes" && ! -e "$SCRIPT_DIR/themes/grub2-themes" ]]; then
+    ln -sf "$HOME/grub2-themes" "$SCRIPT_DIR/themes/grub2-themes"
+fi
+
+case "${1:-}" in
+    --apply)    cmd_apply ;;
+    --list)     cmd_list ;;
+    --download) cmd_download ;;
+    --help|-h)
+        echo ""
+        echo "  Usage: sudo ./manage.sh [option]"
+        echo ""
+        echo "  Options:"
+        echo "    (none)       Interactive menu"
+        echo "    --apply      Apply config.cfg settings and rebuild GRUB"
+        echo "    --list       List all available themes, wallpapers, icons"
+        echo "    --download   Download / update all theme repos"
+        echo "    --help       Show this help"
+        echo ""
+        ;;
+    *)          cmd_interactive ;;
+esac
