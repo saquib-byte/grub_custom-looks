@@ -310,7 +310,9 @@ cmd_apply() {
         info "Build-only mode: Skipping GRUB config update."
         echo ""
         echo -e "${BOLD}${GREEN}✓ Theme compiled!${NC} Your real GRUB config was NOT changed."
-        echo -e "  Preview it safely by running: ${CYAN}grub2-theme-preview $GRUB_THEMES_DIR/$installed_name${NC}\n"
+        local preview_res="${GFXMODE:-1920x1080}"
+        preview_res="${preview_res%,*}" # strips the ',auto' part
+        echo -e "  Preview it safely by running: ${CYAN}grub2-theme-preview --resolution $preview_res $GRUB_THEMES_DIR/$installed_name${NC}\n"
     else
         set_grub_theme "$GRUB_THEMES_DIR/$installed_name/theme.txt"
 
