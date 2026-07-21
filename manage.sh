@@ -478,13 +478,27 @@ cmd_interactive() {
         5)
             require_root
             echo -e "\n${BOLD}Available wallpapers:${NC}"
-            echo "  auto  → theme's bundled wallpaper"
-            find "$SCRIPT_DIR/wallpapers" -maxdepth 2 -type f \( -iname "*.jpg" -o -iname "*.png" \) \
-                | sort | while read -r f; do echo "  $(basename "$f")"; done
+            echo "    1) auto (theme's default)"
+            local w=2
+            local -a wall_files
+            wall_files[1]="auto"
+            while read -r f; do
+                local fname=$(basename "$f")
+                echo "    $w) $fname"
+                wall_files[$w]="$fname"
+                ((w++))
+            done < <(find "$SCRIPT_DIR/wallpapers" -maxdepth 2 -type f \( -iname "*.jpg" -o -iname "*.png" \) 2>/dev/null | sort)
+            
             echo ""
             echo "  To add your own: copy a 1080p JPG/PNG to wallpapers/custom/"
             echo ""
-            read -rp "  Enter wallpaper filename (or 'auto'): " new_wall
+            read -rp "  Select wallpaper [1-$((w-1))]: " wall_idx
+            if [[ -n "$wall_idx" && "$wall_idx" =~ ^[0-9]+$ && "$wall_idx" -ge 1 && "$wall_idx" -lt $w ]]; then
+                new_wall="${wall_files[$wall_idx]}"
+            else
+                new_wall="$ACTIVE_WALL"
+                warn "Keeping current wallpaper: '$new_wall'"
+            fi
             sed -i "s|^ACTIVE_WALL=.*|ACTIVE_WALL=\"$new_wall\"|" "$CONFIG"
             source "$CONFIG"
             cmd_apply
@@ -492,9 +506,17 @@ cmd_interactive() {
 
         6)
             require_root
-            echo -e "\n  Icon styles: color | white | whitesur"
-            read -rp "  Icon style [$ACTIVE_ICONS]: " new_icons
-            new_icons="${new_icons:-$ACTIVE_ICONS}"
+            echo -e "\n  Icon styles:"
+            echo "    1) color"
+            echo "    2) white"
+            echo "    3) whitesur"
+            read -rp "  Select icon style [1-3]: " icon_idx
+            case "$icon_idx" in
+                1) new_icons="color" ;;
+                2) new_icons="white" ;;
+                3) new_icons="whitesur" ;;
+                *) new_icons="$ACTIVE_ICONS" ;;
+            esac
             sed -i "s|^ACTIVE_ICONS=.*|ACTIVE_ICONS=\"$new_icons\"|" "$CONFIG"
             source "$CONFIG"
             cmd_apply
