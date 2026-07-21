@@ -190,9 +190,20 @@ install_darkmatter() {
 install_elegant() {
     local variant="$1"
     local src="$SCRIPT_DIR/themes/elegant-grub2-themes"
-    [[ ! -d "$src" ]] && error "Elegant themes not found. Run: ./manage.sh --download"
+    [[ ! -d "$src" ]] && error "Elegant themes not found."
     info "Installing Elegant $variant..."
-    bash "$src/install.sh" -t "$variant" -s "$RESOLUTION"
+    
+    local el_res="1080p"
+    case "$RESOLUTION" in
+        2k|1440p|ultrawide2k) el_res="2k" ;;
+        4k) el_res="4k" ;;
+        *) el_res="1080p" ;;
+    esac
+    
+    local el_style="window"
+    [[ "$variant" == "blur" ]] && el_style="blur"
+    
+    bash "$src/install.sh" -t mojave -p "$el_style" -i left -c dark -s "$el_res"
     success "Elegant $variant installed"
 }
 
@@ -292,7 +303,10 @@ cmd_apply() {
         elegant)
             local variant="${key#elegant-}"
             install_elegant "$variant"
-            installed_name="Elegant-$variant"
+            
+            local el_style="window"
+            [[ "$variant" == "blur" ]] && el_style="blur"
+            installed_name="Elegant-mojave-${el_style}-left-dark"
             ;;
         sleek)
             local variant="${key#sleek-}"
