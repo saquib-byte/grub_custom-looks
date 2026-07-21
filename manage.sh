@@ -242,6 +242,15 @@ cmd_apply() {
     [[ -z "${THEMES[$key]+_}" ]] && error "Unknown theme: '$key'. Run './manage.sh --list' to see all options."
 
     IFS='|' read -r display_name src_folder install_type <<< "${THEMES[$key]}"
+    
+    # Auto-download if missing
+    if [[ ! -d "$SCRIPT_DIR/themes/$src_folder" ]]; then
+        info "Repo '$src_folder' is missing. Downloading it automatically..."
+        local url="${REPOS[$src_folder]}"
+        git clone --depth=1 "$url" "$SCRIPT_DIR/themes/$src_folder" --quiet || error "Failed to download $src_folder"
+        success "Downloaded '$src_folder'"
+    fi
+
     echo -e "\n${BOLD}Applying: $display_name${NC}\n"
 
     local installed_name=""
@@ -331,20 +340,37 @@ cmd_interactive() {
         4)
             require_root
             echo -e "\n${BOLD}Available themes:${NC}"
+            local i=1
+            local -a theme_keys
             for key in $(echo "${!THEMES[@]}" | tr ' ' '\n' | sort); do
                 IFS='|' read -r name _ _ <<< "${THEMES[$key]}"
-                printf "  %-30s %s\n" "$key" "($name)"
+                printf "  %2d) %-25s %s\n" "$i" "$name" "($key)"
+                theme_keys[$i]="$key"
+                ((i++))
             done
             echo ""
-            read -rp "  Enter theme key [$ACTIVE_THEME]: " new_theme
-            new_theme="${new_theme:-$ACTIVE_THEME}"
-            [[ -z "${THEMES[$new_theme]+_}" ]] && { warn "Unknown theme key."; return; }
+            read -rp "  Select theme [1-$((i-1))]: " theme_idx
+            
+            if [[ -n "$theme_idx" && "$theme_idx" =~ ^[0-9]+$ && "$theme_idx" -ge 1 && "$theme_idx" -lt $i ]]; then
+                new_theme="${theme_keys[$theme_idx]}"
+            else
+                new_theme="$ACTIVE_THEME"
+                warn "Keeping current theme: '$new_theme'"
+            fi
             
             read -rp "  Customize icons, wallpaper, and font size? (y/N): " customize
             if [[ "$customize" =~ ^[Yy]$ ]]; then
-                echo -e "\n  Icon styles: color | white | whitesur"
-                read -rp "  Icon style [$ACTIVE_ICONS]: " new_icons
-                new_icons="${new_icons:-$ACTIVE_ICONS}"
+                echo -e "\n  Icon styles:"
+                echo "    1) color"
+                echo "    2) white"
+                echo "    3) whitesur"
+                read -rp "  Select icon style [1-3]: " icon_idx
+                case "$icon_idx" in
+                    1) new_icons="color" ;;
+                    2) new_icons="white" ;;
+                    3) new_icons="whitesur" ;;
+                    *) new_icons="$ACTIVE_ICONS" ;;
+                esac
                 
                 echo -e "\n  Display Resolution (sets both monitor output and theme scaling):"
                 echo "    1) 1080p        (1920x1080)"
@@ -352,7 +378,7 @@ cmd_interactive() {
                 echo "    3) 4k           (3840x2160)"
                 echo "    4) ultrawide    (2560x1080)"
                 echo "    5) ultrawide2k  (3440x1440)"
-                read -rp "  Choose [1-5, or press Enter to keep current]: " res_choice
+                read -rp "  Select Display Resolution [1-5]: " res_choice
                 
                 case "$res_choice" in
                     1) new_res="1080p"; new_gfx="1920x1080,auto" ;;
@@ -364,10 +390,23 @@ cmd_interactive() {
                 esac
                 
                 echo -e "\n  Available wallpapers:"
-                echo "    auto (theme's default)"
-                find "$SCRIPT_DIR/wallpapers" -maxdepth 2 -type f \( -iname "*.jpg" -o -iname "*.png" \) 2>/dev/null | sort | while read -r f; do echo "    $(basename "$f")"; done
-                read -rp "  Wallpaper [$ACTIVE_WALL]: " new_wall
-                new_wall="${new_wall:-$ACTIVE_WALL}"
+                echo "    1) auto (theme's default)"
+                local w=2
+                local -a wall_files
+                wall_files[1]="auto"
+                while read -r f; do
+                    local fname=$(basename "$f")
+                    echo "    $w) $fname"
+                    wall_files[$w]="$fname"
+                    ((w++))
+                done < <(find "$SCRIPT_DIR/wallpapers" -maxdepth 2 -type f \( -iname "*.jpg" -o -iname "*.png" \) 2>/dev/null | sort)
+                
+                read -rp "  Select wallpaper [1-$((w-1))]: " wall_idx
+                if [[ -n "$wall_idx" && "$wall_idx" =~ ^[0-9]+$ && "$wall_idx" -ge 1 && "$wall_idx" -lt $w ]]; then
+                    new_wall="${wall_files[$wall_idx]}"
+                else
+                    new_wall="$ACTIVE_WALL"
+                fi
             else
                 new_icons="$ACTIVE_ICONS"
                 new_res="$RESOLUTION"
