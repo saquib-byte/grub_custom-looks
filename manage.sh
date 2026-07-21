@@ -31,7 +31,9 @@ warn()    { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error()   { echo -e "${RED}[ERR]${NC}   $*"; exit 1; }
 
 require_root() {
-    [[ "$EUID" -ne 0 ]] && error "This action requires root. Run: sudo ./manage.sh $*"
+    if [[ "$EUID" -ne 0 ]]; then
+        error "This action requires root. Run: sudo ./manage.sh $*"
+    fi
 }
 
 # ── Theme registry ───────────────────────────────────────────
