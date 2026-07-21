@@ -100,6 +100,7 @@ cmd_list() {
     echo "  Icons      : $ACTIVE_ICONS"
     echo "  Theme Scale: $RESOLUTION"
     echo "  Display Res: ${GFXMODE:-1920x1080,auto}"
+    echo "  Menu Layout: ${ACTIVE_LAYOUT:-center}"
     echo ""
 }
 
@@ -131,6 +132,31 @@ cmd_download() {
             git clone --depth=1 "$url" "$dest" --quiet && success "$repo_name downloaded"
         fi
     done
+    
+    echo -e "\n${BOLD}Extracting theme-specific wallpapers...${NC}"
+    local w_dir="$SCRIPT_DIR/wallpapers/themes"
+    mkdir -p "$w_dir"
+    
+    local s="$SCRIPT_DIR/themes/grub2-themes/src"
+    [[ -f "$s/tela/background.jpg" ]] && cp "$s/tela/background.jpg" "$w_dir/tela.jpg" 2>/dev/null || true
+    [[ -f "$s/vimix/background.jpeg" ]] && cp "$s/vimix/background.jpeg" "$w_dir/vimix.jpeg" 2>/dev/null || true
+    [[ -f "$s/stylish/background.jpeg" ]] && cp "$s/stylish/background.jpeg" "$w_dir/stylish.jpeg" 2>/dev/null || true
+    [[ -f "$s/whitesur/background.jpg" ]] && cp "$s/whitesur/background.jpg" "$w_dir/whitesur.jpg" 2>/dev/null || true
+    
+    s="$SCRIPT_DIR/themes/catppuccin/src"
+    [[ -f "$s/catppuccin-mocha-grub-theme/background.png" ]] && cp "$s/catppuccin-mocha-grub-theme/background.png" "$w_dir/catppuccin-mocha.png" 2>/dev/null || true
+    
+    s="$SCRIPT_DIR/themes/darkmatter/assets/backgrounds"
+    [[ -f "$s/linuxmint-1080p.png" ]] && cp "$s/linuxmint-1080p.png" "$w_dir/darkmatter.png" 2>/dev/null || true
+    
+    s="$SCRIPT_DIR/themes/elegant-grub2-themes/backgrounds"
+    [[ -f "$s/mojave.jpg" ]] && cp "$s/mojave.jpg" "$w_dir/elegant-mojave.jpg" 2>/dev/null || true
+    [[ -f "$s/forest.jpg" ]] && cp "$s/forest.jpg" "$w_dir/elegant-forest.jpg" 2>/dev/null || true
+    
+    s="$SCRIPT_DIR/themes/sleek-themes"
+    [[ -f "$s/Sleek theme-dark/background.jpg" ]] && cp "$s/Sleek theme-dark/background.jpg" "$w_dir/sleek-dark.jpg" 2>/dev/null || true
+    
+    success "Wallpapers extracted to wallpapers/themes/"
     echo ""
     success "All theme repos are ready. Run './manage.sh --list' to see them."
 }
@@ -189,9 +215,10 @@ install_darkmatter() {
 
 install_elegant() {
     local variant="$1"
+    local layout="$2"
     local src="$SCRIPT_DIR/themes/elegant-grub2-themes"
     [[ ! -d "$src" ]] && error "Elegant themes not found."
-    info "Installing Elegant $variant..."
+    info "Installing Elegant $variant (layout: $layout)..."
     
     local el_res="1080p"
     case "$RESOLUTION" in
@@ -203,7 +230,7 @@ install_elegant() {
     local el_style="window"
     [[ "$variant" == "blur" ]] && el_style="blur"
     
-    bash "$src/install.sh" -t mojave -p "$el_style" -i left -c dark -s "$el_res"
+    bash "$src/install.sh" -t mojave -p "$el_style" -i "$layout" -c dark -s "$el_res"
     success "Elegant $variant installed"
 }
 
@@ -236,6 +263,7 @@ apply_wallpaper() {
     local wall_file=""
     if   [[ -f "$SCRIPT_DIR/wallpapers/$ACTIVE_WALL" ]];        then wall_file="$SCRIPT_DIR/wallpapers/$ACTIVE_WALL"
     elif [[ -f "$SCRIPT_DIR/wallpapers/custom/$ACTIVE_WALL" ]]; then wall_file="$SCRIPT_DIR/wallpapers/custom/$ACTIVE_WALL"
+    elif [[ -f "$SCRIPT_DIR/wallpapers/themes/$ACTIVE_WALL" ]]; then wall_file="$SCRIPT_DIR/wallpapers/themes/$ACTIVE_WALL"
     elif [[ -f "$CUSTOM_WALL_PATH/$ACTIVE_WALL" ]];             then wall_file="$CUSTOM_WALL_PATH/$ACTIVE_WALL"
     elif [[ -f "$ACTIVE_WALL" ]];                               then wall_file="$ACTIVE_WALL"
     else warn "Wallpaper '$ACTIVE_WALL' not found — skipping"; return
@@ -302,11 +330,14 @@ cmd_apply() {
             ;;
         elegant)
             local variant="${key#elegant-}"
-            install_elegant "$variant"
+            local lay="${ACTIVE_LAYOUT:-left}"
+            [[ "$lay" != "left" && "$lay" != "right" ]] && lay="left"
+            
+            install_elegant "$variant" "$lay"
             
             local el_style="window"
             [[ "$variant" == "blur" ]] && el_style="blur"
-            installed_name="Elegant-mojave-${el_style}-left-dark"
+            installed_name="Elegant-mojave-${el_style}-${lay}-dark"
             ;;
         sleek)
             local variant="${key#sleek-}"
@@ -418,6 +449,19 @@ cmd_interactive() {
                     *) new_icons="$ACTIVE_ICONS" ;;
                 esac
                 
+                if [[ "$new_theme" == elegant-* ]]; then
+                    echo -e "\n  Menu Layout (Supported by Elegant theme only):"
+                    echo "    1) left"
+                    echo "    2) right"
+                    read -rp "  Select layout [1-2]: " layout_idx
+                    case "$layout_idx" in
+                        2) new_layout="right" ;;
+                        *) new_layout="left" ;;
+                    esac
+                else
+                    new_layout="center"
+                fi
+                
                 echo -e "\n  Display Resolution (sets both monitor output and theme scaling):"
                 echo "    1) 1080p        (1920x1080)"
                 echo "    2) 2k           (2560x1440)"
@@ -457,6 +501,7 @@ cmd_interactive() {
                 new_icons="$ACTIVE_ICONS"
                 new_res="$RESOLUTION"
                 new_gfx="${GFXMODE:-1920x1080,auto}"
+                new_layout="${ACTIVE_LAYOUT:-center}"
                 new_wall="auto"
             fi
             
@@ -471,6 +516,11 @@ cmd_interactive() {
                 sed -i "s|^GFXMODE=.*|GFXMODE=\"$new_gfx\"|" "$CONFIG"
             else
                 echo "GFXMODE=\"$new_gfx\"" >> "$CONFIG"
+            fi
+            if grep -q "^ACTIVE_LAYOUT=" "$CONFIG"; then
+                sed -i "s|^ACTIVE_LAYOUT=.*|ACTIVE_LAYOUT=\"$new_layout\"|" "$CONFIG"
+            else
+                echo "ACTIVE_LAYOUT=\"$new_layout\"" >> "$CONFIG"
             fi
             source "$CONFIG"
             
