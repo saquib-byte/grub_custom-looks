@@ -98,7 +98,8 @@ cmd_list() {
     echo "  Theme      : $ACTIVE_THEME"
     echo "  Wallpaper  : $ACTIVE_WALL"
     echo "  Icons      : $ACTIVE_ICONS"
-    echo "  Resolution : $RESOLUTION"
+    echo "  Theme Scale: $RESOLUTION"
+    echo "  Display Res: ${GFXMODE:-1920x1080,auto}"
     echo ""
 }
 
@@ -284,6 +285,17 @@ cmd_apply() {
     else
         set_grub_theme "$GRUB_THEMES_DIR/$installed_name/theme.txt"
 
+        if [[ -n "${GFXMODE:-}" ]]; then
+            if grep -q "^#GRUB_GFXMODE=" "$GRUB_CONFIG"; then
+                sed -i "s|^#GRUB_GFXMODE=.*|GRUB_GFXMODE=\"$GFXMODE\"|" "$GRUB_CONFIG"
+            elif grep -q "^GRUB_GFXMODE=" "$GRUB_CONFIG"; then
+                sed -i "s|^GRUB_GFXMODE=.*|GRUB_GFXMODE=\"$GFXMODE\"|" "$GRUB_CONFIG"
+            else
+                echo "GRUB_GFXMODE=\"$GFXMODE\"" >> "$GRUB_CONFIG"
+            fi
+            success "Display Resolution set → $GFXMODE"
+        fi
+
         info "Rebuilding GRUB config..."
         update-grub
 
@@ -334,9 +346,22 @@ cmd_interactive() {
                 read -rp "  Icon style [$ACTIVE_ICONS]: " new_icons
                 new_icons="${new_icons:-$ACTIVE_ICONS}"
                 
-                echo -e "\n  Resolutions: 1080p | 2k | 4k | ultrawide | ultrawide2k"
-                read -rp "  Resolution (font size) [$RESOLUTION]: " new_res
-                new_res="${new_res:-$RESOLUTION}"
+                echo -e "\n  Display Resolution (sets both monitor output and theme scaling):"
+                echo "    1) 1080p        (1920x1080)"
+                echo "    2) 2k           (2560x1440)"
+                echo "    3) 4k           (3840x2160)"
+                echo "    4) ultrawide    (2560x1080)"
+                echo "    5) ultrawide2k  (3440x1440)"
+                read -rp "  Choose [1-5, or press Enter to keep current]: " res_choice
+                
+                case "$res_choice" in
+                    1) new_res="1080p"; new_gfx="1920x1080,auto" ;;
+                    2) new_res="2k"; new_gfx="2560x1440,auto" ;;
+                    3) new_res="4k"; new_gfx="3840x2160,auto" ;;
+                    4) new_res="ultrawide"; new_gfx="2560x1080,auto" ;;
+                    5) new_res="ultrawide2k"; new_gfx="3440x1440,auto" ;;
+                    *) new_res="$RESOLUTION"; new_gfx="${GFXMODE:-1920x1080,auto}" ;;
+                esac
                 
                 echo -e "\n  Available wallpapers:"
                 echo "    auto (theme's default)"
@@ -346,6 +371,7 @@ cmd_interactive() {
             else
                 new_icons="$ACTIVE_ICONS"
                 new_res="$RESOLUTION"
+                new_gfx="${GFXMODE:-1920x1080,auto}"
                 new_wall="auto"
             fi
             
@@ -353,6 +379,11 @@ cmd_interactive() {
             sed -i "s|^ACTIVE_ICONS=.*|ACTIVE_ICONS=\"$new_icons\"|" "$CONFIG"
             sed -i "s|^RESOLUTION=.*|RESOLUTION=\"$new_res\"|" "$CONFIG"
             sed -i "s|^ACTIVE_WALL=.*|ACTIVE_WALL=\"$new_wall\"|" "$CONFIG"
+            if grep -q "^GFXMODE=" "$CONFIG"; then
+                sed -i "s|^GFXMODE=.*|GFXMODE=\"$new_gfx\"|" "$CONFIG"
+            else
+                echo "GFXMODE=\"$new_gfx\"" >> "$CONFIG"
+            fi
             source "$CONFIG"
             
             echo -e "\n  Do you want to APPLY to real GRUB or just BUILD for live preview?"
