@@ -324,15 +324,48 @@ cmd_interactive() {
                 printf "  %-30s %s\n" "$key" "($name)"
             done
             echo ""
-            read -rp "  Enter theme key: " new_theme
+            read -rp "  Enter theme key [$ACTIVE_THEME]: " new_theme
+            new_theme="${new_theme:-$ACTIVE_THEME}"
             [[ -z "${THEMES[$new_theme]+_}" ]] && { warn "Unknown theme key."; return; }
-            echo ""
-            echo "  Icon styles: color | white | whitesur"
-            read -rp "  Icon style [$ACTIVE_ICONS]: " new_icons
-            new_icons="${new_icons:-$ACTIVE_ICONS}"
+            
+            read -rp "  Customize icons, wallpaper, and font size? (y/N): " customize
+            if [[ "$customize" =~ ^[Yy]$ ]]; then
+                echo -e "\n  Icon styles: color | white | whitesur"
+                read -rp "  Icon style [$ACTIVE_ICONS]: " new_icons
+                new_icons="${new_icons:-$ACTIVE_ICONS}"
+                
+                echo -e "\n  Resolutions: 1080p | 2k | 4k | ultrawide | ultrawide2k"
+                read -rp "  Resolution (font size) [$RESOLUTION]: " new_res
+                new_res="${new_res:-$RESOLUTION}"
+                
+                echo -e "\n  Available wallpapers:"
+                echo "    auto (theme's default)"
+                find "$SCRIPT_DIR/wallpapers" -maxdepth 2 -type f \( -iname "*.jpg" -o -iname "*.png" \) 2>/dev/null | sort | while read -r f; do echo "    $(basename "$f")"; done
+                read -rp "  Wallpaper [$ACTIVE_WALL]: " new_wall
+                new_wall="${new_wall:-$ACTIVE_WALL}"
+            else
+                new_icons="$ACTIVE_ICONS"
+                new_res="$RESOLUTION"
+                new_wall="auto"
+            fi
+            
             sed -i "s|^ACTIVE_THEME=.*|ACTIVE_THEME=\"$new_theme\"|" "$CONFIG"
             sed -i "s|^ACTIVE_ICONS=.*|ACTIVE_ICONS=\"$new_icons\"|" "$CONFIG"
+            sed -i "s|^RESOLUTION=.*|RESOLUTION=\"$new_res\"|" "$CONFIG"
+            sed -i "s|^ACTIVE_WALL=.*|ACTIVE_WALL=\"$new_wall\"|" "$CONFIG"
             source "$CONFIG"
+            
+            echo -e "\n  Do you want to APPLY to real GRUB or just BUILD for live preview?"
+            echo "    1) Apply to real GRUB"
+            echo "    2) Build only (Safe Preview)"
+            read -rp "  Choice [1/2]: " build_choice
+            
+            if [[ "$build_choice" == "2" ]]; then
+                BUILD_ONLY=true
+            else
+                BUILD_ONLY=false
+            fi
+            
             cmd_apply
             ;;
 
