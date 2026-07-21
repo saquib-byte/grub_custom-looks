@@ -275,14 +275,22 @@ cmd_apply() {
     esac
 
     apply_wallpaper "$installed_name"
-    set_grub_theme "$GRUB_THEMES_DIR/$installed_name/theme.txt"
 
-    info "Rebuilding GRUB config..."
-    update-grub
+    if [[ "$BUILD_ONLY" == true ]]; then
+        info "Build-only mode: Skipping GRUB config update."
+        echo ""
+        echo -e "${BOLD}${GREEN}✓ Theme compiled!${NC} Your real GRUB config was NOT changed."
+        echo -e "  Preview it safely by running: ${CYAN}grub2-theme-preview $GRUB_THEMES_DIR/$installed_name${NC}\n"
+    else
+        set_grub_theme "$GRUB_THEMES_DIR/$installed_name/theme.txt"
 
-    echo ""
-    echo -e "${BOLD}${GREEN}✓ Done!${NC} Theme '${BOLD}$display_name${NC}' is now active."
-    echo -e "  Reboot to see your new GRUB look.\n"
+        info "Rebuilding GRUB config..."
+        update-grub
+
+        echo ""
+        echo -e "${BOLD}${GREEN}✓ Done!${NC} Theme '${BOLD}$display_name${NC}' is now active."
+        echo -e "  Reboot to see your new GRUB look.\n"
+    fi
 }
 
 # ════════════════════════════════════════════════════════════
@@ -372,21 +380,25 @@ if [[ -d "$HOME/grub2-themes" && ! -e "$SCRIPT_DIR/themes/grub2-themes" ]]; then
     ln -sf "$HOME/grub2-themes" "$SCRIPT_DIR/themes/grub2-themes"
 fi
 
+BUILD_ONLY=false
+
 case "${1:-}" in
-    --apply)    cmd_apply ;;
-    --list)     cmd_list ;;
-    --download) cmd_download ;;
+    --apply)      cmd_apply ;;
+    --build-only) BUILD_ONLY=true; cmd_apply ;;
+    --list)       cmd_list ;;
+    --download)   cmd_download ;;
     --help|-h)
         echo ""
         echo "  Usage: sudo ./manage.sh [option]"
         echo ""
         echo "  Options:"
-        echo "    (none)       Interactive menu"
-        echo "    --apply      Apply config.cfg settings and rebuild GRUB"
-        echo "    --list       List all available themes, wallpapers, icons"
-        echo "    --download   Download / update all theme repos"
-        echo "    --help       Show this help"
+        echo "    (none)         Interactive menu"
+        echo "    --apply        Apply config.cfg settings and rebuild GRUB"
+        echo "    --build-only   Compile theme but do NOT rebuild GRUB (for safe previewing)"
+        echo "    --list         List all available themes, wallpapers, icons"
+        echo "    --download     Download / update all theme repos"
+        echo "    --help         Show this help"
         echo ""
         ;;
-    *)          cmd_interactive ;;
+    *)            cmd_interactive ;;
 esac
