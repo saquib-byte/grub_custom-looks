@@ -328,9 +328,19 @@ cmd_apply() {
         preview_res="${preview_res%,*}" # strips the ',auto' part
         echo -e "  Preview it safely by running: ${CYAN}grub2-theme-preview --resolution $preview_res $GRUB_THEMES_DIR/$installed_name${NC}\n"
     else
+        # ── Backup real GRUB config before modification ──
+        cp "$GRUB_CONFIG" "${GRUB_CONFIG}.bak"
+        info "Backed up GRUB config to ${GRUB_CONFIG}.bak"
+
         set_grub_theme "$GRUB_THEMES_DIR/$installed_name/theme.txt"
 
         if [[ -n "${GFXMODE:-}" ]]; then
+            # Boundary check for GFXMODE format
+            if [[ ! "$GFXMODE" =~ ^[0-9]+x[0-9]+(,[a-zA-Z0-9]+)*$ ]]; then
+                warn "GFXMODE '$GFXMODE' looks malformed. Defaulting to 1920x1080,auto"
+                GFXMODE="1920x1080,auto"
+            fi
+            
             if grep -q "^#GRUB_GFXMODE=" "$GRUB_CONFIG"; then
                 sed -i "s|^#GRUB_GFXMODE=.*|GRUB_GFXMODE=\"$GFXMODE\"|" "$GRUB_CONFIG"
             elif grep -q "^GRUB_GFXMODE=" "$GRUB_CONFIG"; then
@@ -449,6 +459,9 @@ cmd_interactive() {
                 new_gfx="${GFXMODE:-1920x1080,auto}"
                 new_wall="auto"
             fi
+            
+            cp "$CONFIG" "${CONFIG}.bak"
+            info "Backed up active config to config.cfg.bak"
             
             sed -i "s|^ACTIVE_THEME=.*|ACTIVE_THEME=\"$new_theme\"|" "$CONFIG"
             sed -i "s|^ACTIVE_ICONS=.*|ACTIVE_ICONS=\"$new_icons\"|" "$CONFIG"
