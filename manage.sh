@@ -280,6 +280,68 @@ apply_wallpaper() {
 }
 
 # ════════════════════════════════════════════════════════════
+# UNIVERSAL LAYOUT ENGINE
+# ════════════════════════════════════════════════════════════
+apply_layout() {
+    local theme_install_name="$1"
+    local theme_dir="$GRUB_THEMES_DIR/$theme_install_name"
+    local layout="${ACTIVE_LAYOUT:-center}"
+    local txt="$theme_dir/theme.txt"
+    
+    [[ ! -f "$txt" ]] && return
+    [[ "$layout" == "center" || "$layout" == "auto" ]] && { info "Using theme's default layout"; return; }
+
+    info "Applying universal layout: $layout"
+    local new_left="30%"
+    local new_top="30%"
+    local new_width="40%"
+
+    case "$layout" in
+        left)         new_left="10%"; new_top="30%" ;;
+        right)        new_left="50%"; new_top="30%" ;;
+        upper-left)   new_left="10%"; new_top="10%" ;;
+        upper-right)  new_left="50%"; new_top="10%" ;;
+        bottom-left)  new_left="10%"; new_top="50%" ;;
+        bottom-right) new_left="50%"; new_top="50%" ;;
+        *) return ;;
+    esac
+
+    python3 -c '
+import sys, re
+path, left, top, width = sys.argv[1:5]
+
+try:
+    with open(path, "r") as f:
+        content = f.read()
+
+    def replace_in_block(block_name, props, text):
+        pattern = r"(\+ " + block_name + r" \{)([^\}]+)(\})"
+        match = re.search(pattern, text)
+        if not match: return text
+        
+        block_content = match.group(2)
+        for k, v in props.items():
+            if re.search(r"^[ \t]*" + k + r"[ \t]*=.*$", block_content, flags=re.MULTILINE):
+                block_content = re.sub(r"^[ \t]*" + k + r"[ \t]*=.*$", f"\n    {k} = {v}", block_content, flags=re.MULTILINE)
+            else:
+                block_content += f"\n    {k} = {v}\n"
+        
+        return text[:match.start(2)] + block_content + text[match.end(2):]
+
+    content = replace_in_block("boot_menu", {"left": left, "top": top, "width": width}, content)
+    content = replace_in_block("progress_bar", {"left": left, "width": width}, content)
+    content = replace_in_block("vbox", {"left": left, "width": width}, content)
+
+    with open(path, "w") as f:
+        f.write(content)
+except Exception as e:
+    print(f"Layout engine error: {e}")
+' "$txt" "$new_left" "$new_top" "$new_width"
+
+    success "Layout applied dynamically"
+}
+
+# ════════════════════════════════════════════════════════════
 # SET GRUB_THEME in /etc/default/grub
 # ════════════════════════════════════════════════════════════
 set_grub_theme() {
@@ -350,6 +412,7 @@ cmd_apply() {
     esac
 
     apply_wallpaper "$installed_name"
+    apply_layout "$installed_name"
 
     if [[ "$BUILD_ONLY" == true ]]; then
         info "Build-only mode: Skipping GRUB config update."
@@ -449,18 +512,24 @@ cmd_interactive() {
                     *) new_icons="$ACTIVE_ICONS" ;;
                 esac
                 
-                if [[ "$new_theme" == elegant-* ]]; then
-                    echo -e "\n  Menu Layout (Supported by Elegant theme only):"
-                    echo "    1) left"
-                    echo "    2) right"
-                    read -rp "  Select layout [1-2]: " layout_idx
-                    case "$layout_idx" in
-                        2) new_layout="right" ;;
-                        *) new_layout="left" ;;
-                    esac
-                else
-                    new_layout="center"
-                fi
+                echo -e "\n  Menu Layout (Universally supported for all themes!):"
+                echo "    1) center (default)"
+                echo "    2) left"
+                echo "    3) right"
+                echo "    4) upper-left"
+                echo "    5) upper-right"
+                echo "    6) bottom-left"
+                echo "    7) bottom-right"
+                read -rp "  Select layout [1-7]: " layout_idx
+                case "$layout_idx" in
+                    2) new_layout="left" ;;
+                    3) new_layout="right" ;;
+                    4) new_layout="upper-left" ;;
+                    5) new_layout="upper-right" ;;
+                    6) new_layout="bottom-left" ;;
+                    7) new_layout="bottom-right" ;;
+                    *) new_layout="center" ;;
+                esac
                 
                 echo -e "\n  Display Resolution (sets both monitor output and theme scaling):"
                 echo "    1) 1080p        (1920x1080)"
