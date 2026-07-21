@@ -163,7 +163,27 @@ install_darkmatter() {
     local src="$SCRIPT_DIR/themes/darkmatter"
     [[ ! -d "$src" ]] && error "Dark Matter not found. Run: ./manage.sh --download"
     info "Installing Dark Matter..."
-    bash "$src/install.sh" -t "darkmatter"
+    
+    local dm_res="1080p"
+    [[ "$RESOLUTION" == "2k" || "$RESOLUTION" == "1440p" ]] && dm_res="1440p"
+    
+    local dm_icons="color"
+    [[ "$ACTIVE_ICONS" == "white" ]] && dm_icons="white"
+    
+    local dest="$GRUB_THEMES_DIR/darkmatter"
+    mkdir -p "$dest"
+    
+    # Copy base files and fonts
+    cp -r "$src/base/$dm_res/"* "$dest/"
+    cp -r "$src/assets/fonts/$dm_res/"* "$dest/"
+    
+    # Copy icons
+    rm -rf "$dest/icons"
+    cp -r "$src/assets/icons-$dm_res/$dm_icons" "$dest/icons"
+    
+    # Provide a default background (apply_wallpaper will override if set)
+    cp "$src/assets/backgrounds/linuxmint-$dm_res.png" "$dest/background.png" 2>/dev/null || true
+    
     success "Dark Matter installed"
 }
 
