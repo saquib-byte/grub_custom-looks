@@ -512,24 +512,31 @@ cmd_interactive() {
                     *) new_icons="$ACTIVE_ICONS" ;;
                 esac
                 
-                echo -e "\n  Menu Layout (Universally supported for all themes!):"
-                echo "    1) center (default)"
-                echo "    2) left"
-                echo "    3) right"
-                echo "    4) upper-left"
-                echo "    5) upper-right"
-                echo "    6) bottom-left"
-                echo "    7) bottom-right"
-                read -rp "  Select layout [1-7]: " layout_idx
-                case "$layout_idx" in
-                    2) new_layout="left" ;;
-                    3) new_layout="right" ;;
-                    4) new_layout="upper-left" ;;
-                    5) new_layout="upper-right" ;;
-                    6) new_layout="bottom-left" ;;
-                    7) new_layout="bottom-right" ;;
-                    *) new_layout="center" ;;
+                local -a supported_layouts
+                case "$new_theme" in
+                    darkmatter)   supported_layouts=("center" "left" "right" "upper-left" "upper-right" "bottom-left" "bottom-right") ;;
+                    elegant-*)    supported_layouts=("center" "left" "right") ;;
+                    stylish)      supported_layouts=("center") ;;
+                    *)            supported_layouts=("center" "left" "right") ;;
                 esac
+                
+                if [[ ${#supported_layouts[@]} -eq 1 ]]; then
+                    new_layout="${supported_layouts[0]}"
+                    echo -e "\n  ${CYAN}[INFO]${NC}  Theme '$new_theme' looks best with layout: $new_layout"
+                else
+                    echo -e "\n  Menu Layouts (Aesthetically recommended for $new_theme):"
+                    local idx=1
+                    for lay in "${supported_layouts[@]}"; do
+                        echo "    $idx) $lay"
+                        ((idx++))
+                    done
+                    read -rp "  Select layout [1-$((idx-1))]: " layout_idx
+                    if [[ -n "$layout_idx" && "$layout_idx" =~ ^[0-9]+$ && "$layout_idx" -ge 1 && "$layout_idx" -lt $idx ]]; then
+                        new_layout="${supported_layouts[$((layout_idx-1))]}"
+                    else
+                        new_layout="center"
+                    fi
+                fi
                 
                 echo -e "\n  Display Resolution (sets both monitor output and theme scaling):"
                 echo "    1) 1080p        (1920x1080)"
