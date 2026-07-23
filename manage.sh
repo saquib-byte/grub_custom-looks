@@ -351,6 +351,13 @@ set_grub_theme() {
     else
         echo "GRUB_THEME=\"$theme_path\"" >> "$GRUB_CONFIG"
     fi
+    
+    # ── Purge invasive variables left by external installers ──
+    # The Elegant installer forcefully writes GRUB_BACKGROUND to /etc/default/grub.
+    # This completely breaks subsequent themes by overriding their background.
+    # We must aggressively purge it when switching themes.
+    sed -i '/^GRUB_BACKGROUND=/d' "$GRUB_CONFIG"
+    
     success "GRUB_THEME set → $theme_path"
 }
 
