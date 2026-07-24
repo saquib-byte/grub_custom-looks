@@ -1,3 +1,96 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: manage.sh, config.cfg
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+config.cfg
+manage.sh
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="config.cfg">
+# ============================================================
+# grub_custom-looks — Active Configuration
+# GitHub: https://github.com/YOUR_USERNAME/grub_custom-looks
+#
+# Edit this file to change your GRUB appearance,
+# then run: sudo ./manage.sh --apply
+# ============================================================
+
+# --- THEME ---
+# Available theme keys (run ./manage.sh --list to see all):
+#   tela | vimix | stylish | whitesur
+#   catppuccin-mocha | catppuccin-latte | catppuccin-frappe | catppuccin-macchiato
+#   darkmatter | elegant-blur | elegant-dark
+#   sleek-dark | sleek-light | sleek-orange
+ACTIVE_THEME="elegant-dark"
+
+# --- WALLPAPER ---
+# "auto"         → use the theme's own bundled wallpaper (recommended)
+# "tela.jpg"     → use a file from the wallpapers/ folder
+# "myimage.png"  → use a file from wallpapers/custom/ folder
+ACTIVE_WALL="auto"
+
+# Path checked when ACTIVE_WALL is a custom filename:
+CUSTOM_WALL_PATH="/home/mintian/grub_custom-looks/wallpapers/custom"
+
+# --- ICON STYLE ---
+# color      → Colorful OS icons  (works with: tela, vimix, stylish, whitesur)
+# white      → White/mono icons   (works with: tela, vimix, stylish, whitesur)
+# whitesur   → macOS-style icons  (works with: tela, vimix, stylish, whitesur)
+ACTIVE_ICONS="color"
+
+# --- DISPLAY RESOLUTION ---
+# Match this to your monitor. Options: 1080p | 2k | 4k | ultrawide | ultrawide2k
+RESOLUTION="1080p"
+
+# --- SYSTEM PATHS (do not change unless you know what you're doing) ---
+GRUB_THEMES_DIR="/usr/share/grub/themes"
+GRUB_CONFIG="/etc/default/grub"
+GFXMODE="1920x1080,auto"
+</file>
+
+<file path="manage.sh">
 #!/usr/bin/env bash
 # ============================================================
 #  grub_custom-looks — manage.sh
@@ -100,7 +193,6 @@ cmd_list() {
     echo "  Icons      : $ACTIVE_ICONS"
     echo "  Theme Scale: $RESOLUTION"
     echo "  Display Res: ${GFXMODE:-1920x1080,auto}"
-    echo "  Menu Layout: ${ACTIVE_LAYOUT:-center}"
     echo ""
 }
 
@@ -132,31 +224,6 @@ cmd_download() {
             git clone --depth=1 "$url" "$dest" --quiet && success "$repo_name downloaded"
         fi
     done
-    
-    echo -e "\n${BOLD}Extracting theme-specific wallpapers...${NC}"
-    local w_dir="$SCRIPT_DIR/wallpapers/themes"
-    mkdir -p "$w_dir"
-    
-    local s="$SCRIPT_DIR/themes/grub2-themes/src"
-    [[ -f "$s/tela/background.jpg" ]] && cp "$s/tela/background.jpg" "$w_dir/tela.jpg" 2>/dev/null || true
-    [[ -f "$s/vimix/background.jpeg" ]] && cp "$s/vimix/background.jpeg" "$w_dir/vimix.jpeg" 2>/dev/null || true
-    [[ -f "$s/stylish/background.jpeg" ]] && cp "$s/stylish/background.jpeg" "$w_dir/stylish.jpeg" 2>/dev/null || true
-    [[ -f "$s/whitesur/background.jpg" ]] && cp "$s/whitesur/background.jpg" "$w_dir/whitesur.jpg" 2>/dev/null || true
-    
-    s="$SCRIPT_DIR/themes/catppuccin/src"
-    [[ -f "$s/catppuccin-mocha-grub-theme/background.png" ]] && cp "$s/catppuccin-mocha-grub-theme/background.png" "$w_dir/catppuccin-mocha.png" 2>/dev/null || true
-    
-    s="$SCRIPT_DIR/themes/darkmatter/assets/backgrounds"
-    [[ -f "$s/linuxmint-1080p.png" ]] && cp "$s/linuxmint-1080p.png" "$w_dir/darkmatter.png" 2>/dev/null || true
-    
-    s="$SCRIPT_DIR/themes/elegant-grub2-themes/backgrounds"
-    [[ -f "$s/mojave.jpg" ]] && cp "$s/mojave.jpg" "$w_dir/elegant-mojave.jpg" 2>/dev/null || true
-    [[ -f "$s/forest.jpg" ]] && cp "$s/forest.jpg" "$w_dir/elegant-forest.jpg" 2>/dev/null || true
-    
-    s="$SCRIPT_DIR/themes/sleek-themes"
-    [[ -f "$s/Sleek theme-dark/background.jpg" ]] && cp "$s/Sleek theme-dark/background.jpg" "$w_dir/sleek-dark.jpg" 2>/dev/null || true
-    
-    success "Wallpapers extracted to wallpapers/themes/"
     echo ""
     success "All theme repos are ready. Run './manage.sh --list' to see them."
 }
@@ -215,10 +282,9 @@ install_darkmatter() {
 
 install_elegant() {
     local variant="$1"
-    local layout="$2"
     local src="$SCRIPT_DIR/themes/elegant-grub2-themes"
     [[ ! -d "$src" ]] && error "Elegant themes not found."
-    info "Installing Elegant $variant (layout: $layout)..."
+    info "Installing Elegant $variant..."
     
     local el_res="1080p"
     case "$RESOLUTION" in
@@ -230,7 +296,7 @@ install_elegant() {
     local el_style="window"
     [[ "$variant" == "blur" ]] && el_style="blur"
     
-    bash "$src/install.sh" -t mojave -p "$el_style" -i "$layout" -c dark -s "$el_res"
+    bash "$src/install.sh" -t mojave -p "$el_style" -i left -c dark -s "$el_res"
     success "Elegant $variant installed"
 }
 
@@ -263,7 +329,6 @@ apply_wallpaper() {
     local wall_file=""
     if   [[ -f "$SCRIPT_DIR/wallpapers/$ACTIVE_WALL" ]];        then wall_file="$SCRIPT_DIR/wallpapers/$ACTIVE_WALL"
     elif [[ -f "$SCRIPT_DIR/wallpapers/custom/$ACTIVE_WALL" ]]; then wall_file="$SCRIPT_DIR/wallpapers/custom/$ACTIVE_WALL"
-    elif [[ -f "$SCRIPT_DIR/wallpapers/themes/$ACTIVE_WALL" ]]; then wall_file="$SCRIPT_DIR/wallpapers/themes/$ACTIVE_WALL"
     elif [[ -f "$CUSTOM_WALL_PATH/$ACTIVE_WALL" ]];             then wall_file="$CUSTOM_WALL_PATH/$ACTIVE_WALL"
     elif [[ -f "$ACTIVE_WALL" ]];                               then wall_file="$ACTIVE_WALL"
     else warn "Wallpaper '$ACTIVE_WALL' not found — skipping"; return
@@ -280,68 +345,6 @@ apply_wallpaper() {
 }
 
 # ════════════════════════════════════════════════════════════
-# UNIVERSAL LAYOUT ENGINE
-# ════════════════════════════════════════════════════════════
-apply_layout() {
-    local theme_install_name="$1"
-    local theme_dir="$GRUB_THEMES_DIR/$theme_install_name"
-    local layout="${ACTIVE_LAYOUT:-center}"
-    local txt="$theme_dir/theme.txt"
-    
-    [[ ! -f "$txt" ]] && return
-    [[ "$layout" == "center" || "$layout" == "auto" ]] && { info "Using theme's default layout"; return; }
-
-    info "Applying universal layout: $layout"
-    local new_left="30%"
-    local new_top="30%"
-    local new_width="40%"
-
-    case "$layout" in
-        left)         new_left="10%"; new_top="30%" ;;
-        right)        new_left="50%"; new_top="30%" ;;
-        upper-left)   new_left="10%"; new_top="10%" ;;
-        upper-right)  new_left="50%"; new_top="10%" ;;
-        bottom-left)  new_left="10%"; new_top="50%" ;;
-        bottom-right) new_left="50%"; new_top="50%" ;;
-        *) return ;;
-    esac
-
-    python3 -c '
-import sys, re
-path, left, top, width = sys.argv[1:5]
-
-try:
-    with open(path, "r") as f:
-        content = f.read()
-
-    def replace_in_block(block_name, props, text):
-        pattern = r"(\+ " + block_name + r" \{)([^\}]+)(\})"
-        match = re.search(pattern, text)
-        if not match: return text
-        
-        block_content = match.group(2)
-        for k, v in props.items():
-            if re.search(r"^[ \t]*" + k + r"[ \t]*=.*$", block_content, flags=re.MULTILINE):
-                block_content = re.sub(r"^[ \t]*" + k + r"[ \t]*=.*$", f"\n    {k} = {v}", block_content, flags=re.MULTILINE)
-            else:
-                block_content += f"\n    {k} = {v}\n"
-        
-        return text[:match.start(2)] + block_content + text[match.end(2):]
-
-    content = replace_in_block("boot_menu", {"left": left, "top": top, "width": width}, content)
-    content = replace_in_block("progress_bar", {"left": left, "width": width}, content)
-    content = replace_in_block("vbox", {"left": left, "width": width}, content)
-
-    with open(path, "w") as f:
-        f.write(content)
-except Exception as e:
-    print(f"Layout engine error: {e}")
-' "$txt" "$new_left" "$new_top" "$new_width"
-
-    success "Layout applied dynamically"
-}
-
-# ════════════════════════════════════════════════════════════
 # SET GRUB_THEME in /etc/default/grub
 # ════════════════════════════════════════════════════════════
 set_grub_theme() {
@@ -351,68 +354,6 @@ set_grub_theme() {
     else
         echo "GRUB_THEME=\"$theme_path\"" >> "$GRUB_CONFIG"
     fi
-    
-    # ── Purge invasive variables left by external installers ──
-    # The Elegant installer forcefully writes GRUB_BACKGROUND to /etc/default/grub.
-    # This completely breaks subsequent themes by overriding their background.
-    # We must aggressively purge it when switching themes.
-    sed -i '/^GRUB_BACKGROUND=/d' "$GRUB_CONFIG"
-    
-    # ── Fix common visual GRUB glitches ──
-    # 1. 'hidden' prevents the graphical menu from rendering (causes black screens)
-    if grep -q "^GRUB_TIMEOUT_STYLE=" "$GRUB_CONFIG"; then
-        sed -i 's|^GRUB_TIMEOUT_STYLE=.*|GRUB_TIMEOUT_STYLE="menu"|' "$GRUB_CONFIG"
-    else
-        echo 'GRUB_TIMEOUT_STYLE="menu"' >> "$GRUB_CONFIG"
-    fi
-    
-    # 2. Purge solid text background colors that ruin theme transparency (black boxes around text)
-    sed -i '/^export GRUB_COLOR_NORMAL=/d' "$GRUB_CONFIG"
-    sed -i '/^GRUB_COLOR_NORMAL=/d' "$GRUB_CONFIG"
-    
-    # 3. Fix hybrid GPU post-menu flicker (keep framebuffer resolution).
-    # NOTE: 'keep' is safe on this system — Intel iGPU 8086:a78b is NOT blacklisted.
-    if ! grep -q "^GRUB_GFXPAYLOAD_LINUX=" "$GRUB_CONFIG"; then
-        echo 'GRUB_GFXPAYLOAD_LINUX=keep' >> "$GRUB_CONFIG"
-    fi
-    
-    # 4. Fix boot slowdown: 98_mintsysadm.cfg forcibly sets GRUB_TIMEOUT=-1 (wait forever).
-    # We write a 99_grub_custom_looks.cfg that sorts AFTER it (99 > 98) and restores
-    # a 10-second countdown so GRUB auto-boots without user input.
-    local dropin="/etc/default/grub.d/99_grub_custom_looks.cfg"
-    cat > "$dropin" << 'EOF'
-# Written by grub_custom-looks/manage.sh
-# Overrides 98_mintsysadm.cfg's GRUB_TIMEOUT=-1 to restore auto-boot countdown.
-GRUB_TIMEOUT=10
-EOF
-    success "Auto-boot timeout set to 10 seconds"
-    
-    # 4. THE REAL GLITCH FIX — Neuter 05_debian_theme's forced color injection
-    # /etc/grub.d/05_debian_theme is run by grub-mkconfig AFTER 00_header sets the theme.
-    # For Ubuntu/Kubuntu distributors (which Linux Mint fakes as), it always runs
-    # set_default_theme() which writes:
-    #   set menu_color_normal=white/black
-    #   set menu_color_highlight=black/light-gray
-    # These GLOBAL color overrides destroy a custom theme's transparency,
-    # producing white/grey boxes around all text items. This is the root cause.
-    # Fix: inject an early-exit guard at the top of the script so it does nothing
-    # when a proper GRUB_THEME is already configured.
-    local debian_theme="/etc/grub.d/05_debian_theme"
-    if [[ -f "$debian_theme" ]] && ! grep -q "GRUB_THEME_EARLY_EXIT_GUARD" "$debian_theme"; then
-        # Back up original first
-        cp "$debian_theme" "${debian_theme}.bak" 2>/dev/null || true
-        # Inject guard after the shebang line
-        sed -i '2a\
-\
-# GRUB_THEME_EARLY_EXIT_GUARD — added by grub_custom-looks/manage.sh\
-# When a proper GRUB_THEME is configured, this script must not inject\
-# Ubuntu hardcoded menu colors that destroy theme transparency.\
-. /etc/default/grub 2>/dev/null || true\
-if [ -n "${GRUB_THEME}" ] && [ -f "${GRUB_THEME}" ]; then exit 0; fi\
-' "$debian_theme"
-        success "Patched 05_debian_theme to respect custom themes"
-    fi
-    
     success "GRUB_THEME set → $theme_path"
 }
 
@@ -454,14 +395,11 @@ cmd_apply() {
             ;;
         elegant)
             local variant="${key#elegant-}"
-            local lay="${ACTIVE_LAYOUT:-left}"
-            [[ "$lay" != "left" && "$lay" != "right" ]] && lay="left"
-            
-            install_elegant "$variant" "$lay"
+            install_elegant "$variant"
             
             local el_style="window"
             [[ "$variant" == "blur" ]] && el_style="blur"
-            installed_name="Elegant-mojave-${el_style}-${lay}-dark"
+            installed_name="Elegant-mojave-${el_style}-left-dark"
             ;;
         sleek)
             local variant="${key#sleek-}"
@@ -474,7 +412,6 @@ cmd_apply() {
     esac
 
     apply_wallpaper "$installed_name"
-    apply_layout "$installed_name"
 
     if [[ "$BUILD_ONLY" == true ]]; then
         info "Build-only mode: Skipping GRUB config update."
@@ -484,19 +421,9 @@ cmd_apply() {
         preview_res="${preview_res%,*}" # strips the ',auto' part
         echo -e "  Preview it safely by running: ${CYAN}grub2-theme-preview --resolution $preview_res $GRUB_THEMES_DIR/$installed_name${NC}\n"
     else
-        # ── Backup real GRUB config before modification ──
-        cp "$GRUB_CONFIG" "${GRUB_CONFIG}.bak"
-        info "Backed up GRUB config to ${GRUB_CONFIG}.bak"
-
         set_grub_theme "$GRUB_THEMES_DIR/$installed_name/theme.txt"
 
         if [[ -n "${GFXMODE:-}" ]]; then
-            # Boundary check for GFXMODE format
-            if [[ ! "$GFXMODE" =~ ^[0-9]+x[0-9]+(,[a-zA-Z0-9]+)*$ ]]; then
-                warn "GFXMODE '$GFXMODE' looks malformed. Defaulting to 1920x1080,auto"
-                GFXMODE="1920x1080,auto"
-            fi
-            
             if grep -q "^#GRUB_GFXMODE=" "$GRUB_CONFIG"; then
                 sed -i "s|^#GRUB_GFXMODE=.*|GRUB_GFXMODE=\"$GFXMODE\"|" "$GRUB_CONFIG"
             elif grep -q "^GRUB_GFXMODE=" "$GRUB_CONFIG"; then
@@ -574,32 +501,6 @@ cmd_interactive() {
                     *) new_icons="$ACTIVE_ICONS" ;;
                 esac
                 
-                local -a supported_layouts
-                case "$new_theme" in
-                    darkmatter)   supported_layouts=("center" "left" "right" "upper-left" "upper-right" "bottom-left" "bottom-right") ;;
-                    elegant-*)    supported_layouts=("center" "left" "right") ;;
-                    stylish)      supported_layouts=("center") ;;
-                    *)            supported_layouts=("center" "left" "right") ;;
-                esac
-                
-                if [[ ${#supported_layouts[@]} -eq 1 ]]; then
-                    new_layout="${supported_layouts[0]}"
-                    echo -e "\n  ${CYAN}[INFO]${NC}  Theme '$new_theme' looks best with layout: $new_layout"
-                else
-                    echo -e "\n  Menu Layouts (Aesthetically recommended for $new_theme):"
-                    local idx=1
-                    for lay in "${supported_layouts[@]}"; do
-                        echo "    $idx) $lay"
-                        ((idx++))
-                    done
-                    read -rp "  Select layout [1-$((idx-1))]: " layout_idx
-                    if [[ -n "$layout_idx" && "$layout_idx" =~ ^[0-9]+$ && "$layout_idx" -ge 1 && "$layout_idx" -lt $idx ]]; then
-                        new_layout="${supported_layouts[$((layout_idx-1))]}"
-                    else
-                        new_layout="center"
-                    fi
-                fi
-                
                 echo -e "\n  Display Resolution (sets both monitor output and theme scaling):"
                 echo "    1) 1080p        (1920x1080)"
                 echo "    2) 2k           (2560x1440)"
@@ -639,12 +540,8 @@ cmd_interactive() {
                 new_icons="$ACTIVE_ICONS"
                 new_res="$RESOLUTION"
                 new_gfx="${GFXMODE:-1920x1080,auto}"
-                new_layout="${ACTIVE_LAYOUT:-center}"
                 new_wall="auto"
             fi
-            
-            cp "$CONFIG" "${CONFIG}.bak"
-            info "Backed up active config to config.cfg.bak"
             
             sed -i "s|^ACTIVE_THEME=.*|ACTIVE_THEME=\"$new_theme\"|" "$CONFIG"
             sed -i "s|^ACTIVE_ICONS=.*|ACTIVE_ICONS=\"$new_icons\"|" "$CONFIG"
@@ -654,11 +551,6 @@ cmd_interactive() {
                 sed -i "s|^GFXMODE=.*|GFXMODE=\"$new_gfx\"|" "$CONFIG"
             else
                 echo "GFXMODE=\"$new_gfx\"" >> "$CONFIG"
-            fi
-            if grep -q "^ACTIVE_LAYOUT=" "$CONFIG"; then
-                sed -i "s|^ACTIVE_LAYOUT=.*|ACTIVE_LAYOUT=\"$new_layout\"|" "$CONFIG"
-            else
-                echo "ACTIVE_LAYOUT=\"$new_layout\"" >> "$CONFIG"
             fi
             source "$CONFIG"
             
@@ -679,27 +571,13 @@ cmd_interactive() {
         5)
             require_root
             echo -e "\n${BOLD}Available wallpapers:${NC}"
-            echo "    1) auto (theme's default)"
-            local w=2
-            local -a wall_files
-            wall_files[1]="auto"
-            while read -r f; do
-                local fname=$(basename "$f")
-                echo "    $w) $fname"
-                wall_files[$w]="$fname"
-                ((w++))
-            done < <(find "$SCRIPT_DIR/wallpapers" -maxdepth 2 -type f \( -iname "*.jpg" -o -iname "*.png" \) 2>/dev/null | sort)
-            
+            echo "  auto  → theme's bundled wallpaper"
+            find "$SCRIPT_DIR/wallpapers" -maxdepth 2 -type f \( -iname "*.jpg" -o -iname "*.png" \) \
+                | sort | while read -r f; do echo "  $(basename "$f")"; done
             echo ""
             echo "  To add your own: copy a 1080p JPG/PNG to wallpapers/custom/"
             echo ""
-            read -rp "  Select wallpaper [1-$((w-1))]: " wall_idx
-            if [[ -n "$wall_idx" && "$wall_idx" =~ ^[0-9]+$ && "$wall_idx" -ge 1 && "$wall_idx" -lt $w ]]; then
-                new_wall="${wall_files[$wall_idx]}"
-            else
-                new_wall="$ACTIVE_WALL"
-                warn "Keeping current wallpaper: '$new_wall'"
-            fi
+            read -rp "  Enter wallpaper filename (or 'auto'): " new_wall
             sed -i "s|^ACTIVE_WALL=.*|ACTIVE_WALL=\"$new_wall\"|" "$CONFIG"
             source "$CONFIG"
             cmd_apply
@@ -707,17 +585,9 @@ cmd_interactive() {
 
         6)
             require_root
-            echo -e "\n  Icon styles:"
-            echo "    1) color"
-            echo "    2) white"
-            echo "    3) whitesur"
-            read -rp "  Select icon style [1-3]: " icon_idx
-            case "$icon_idx" in
-                1) new_icons="color" ;;
-                2) new_icons="white" ;;
-                3) new_icons="whitesur" ;;
-                *) new_icons="$ACTIVE_ICONS" ;;
-            esac
+            echo -e "\n  Icon styles: color | white | whitesur"
+            read -rp "  Icon style [$ACTIVE_ICONS]: " new_icons
+            new_icons="${new_icons:-$ACTIVE_ICONS}"
             sed -i "s|^ACTIVE_ICONS=.*|ACTIVE_ICONS=\"$new_icons\"|" "$CONFIG"
             source "$CONFIG"
             cmd_apply
@@ -764,3 +634,6 @@ case "${1:-}" in
         ;;
     *)            cmd_interactive ;;
 esac
+</file>
+
+</files>

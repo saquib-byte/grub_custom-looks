@@ -12,13 +12,13 @@
 #   catppuccin-mocha | catppuccin-latte | catppuccin-frappe | catppuccin-macchiato
 #   darkmatter | elegant-blur | elegant-dark
 #   sleek-dark | sleek-light | sleek-orange
-ACTIVE_THEME="darkmatter"
+ACTIVE_THEME="elegant-dark"
 
 # --- WALLPAPER ---
 # "auto"         → use the theme's own bundled wallpaper (recommended)
 # "tela.jpg"     → use a file from the wallpapers/ folder
 # "myimage.png"  → use a file from wallpapers/custom/ folder
-ACTIVE_WALL="stylish.jpg"
+ACTIVE_WALL="auto"
 
 # Path checked when ACTIVE_WALL is a custom filename:
 CUSTOM_WALL_PATH="/home/mintian/grub_custom-looks/wallpapers/custom"
@@ -37,3 +37,4 @@ RESOLUTION="1080p"
 GRUB_THEMES_DIR="/usr/share/grub/themes"
 GRUB_CONFIG="/etc/default/grub"
 GFXMODE="1920x1080,auto"
+ACTIVE_LAYOUT="center"
