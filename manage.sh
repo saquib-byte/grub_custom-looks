@@ -358,6 +358,18 @@ set_grub_theme() {
     # We must aggressively purge it when switching themes.
     sed -i '/^GRUB_BACKGROUND=/d' "$GRUB_CONFIG"
     
+    # ── Fix common visual GRUB glitches ──
+    # 1. 'hidden' prevents the graphical menu from rendering (causes black screens)
+    if grep -q "^GRUB_TIMEOUT_STYLE=" "$GRUB_CONFIG"; then
+        sed -i 's|^GRUB_TIMEOUT_STYLE=.*|GRUB_TIMEOUT_STYLE="menu"|' "$GRUB_CONFIG"
+    else
+        echo 'GRUB_TIMEOUT_STYLE="menu"' >> "$GRUB_CONFIG"
+    fi
+    
+    # 2. Purge solid text background colors that ruin theme transparency (black boxes around text)
+    sed -i '/^export GRUB_COLOR_NORMAL=/d' "$GRUB_CONFIG"
+    sed -i '/^GRUB_COLOR_NORMAL=/d' "$GRUB_CONFIG"
+    
     success "GRUB_THEME set → $theme_path"
 }
 
