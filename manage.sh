@@ -370,6 +370,15 @@ set_grub_theme() {
     sed -i '/^export GRUB_COLOR_NORMAL=/d' "$GRUB_CONFIG"
     sed -i '/^GRUB_COLOR_NORMAL=/d' "$GRUB_CONFIG"
     
+    # 3. Prevent post-menu resolution flicker on hybrid GPU (Intel+NVIDIA) laptops
+    # Without this, gfxpayload_dynamic checks the blacklist and can produce a
+    # brief screen resolution reset as the kernel hands off from the EFI framebuffer.
+    if grep -q "^GRUB_GFXPAYLOAD_LINUX=" "$GRUB_CONFIG"; then
+        sed -i 's|^GRUB_GFXPAYLOAD_LINUX=.*|GRUB_GFXPAYLOAD_LINUX=keep|' "$GRUB_CONFIG"
+    else
+        echo 'GRUB_GFXPAYLOAD_LINUX=keep' >> "$GRUB_CONFIG"
+    fi
+    
     success "GRUB_THEME set → $theme_path"
 }
 
