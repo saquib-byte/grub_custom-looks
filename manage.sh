@@ -370,14 +370,22 @@ set_grub_theme() {
     sed -i '/^export GRUB_COLOR_NORMAL=/d' "$GRUB_CONFIG"
     sed -i '/^GRUB_COLOR_NORMAL=/d' "$GRUB_CONFIG"
     
-    # 3. Prevent post-menu resolution flicker on hybrid GPU (Intel+NVIDIA) laptops
-    # Without this, gfxpayload_dynamic checks the blacklist and can produce a
-    # brief screen resolution reset as the kernel hands off from the EFI framebuffer.
-    if grep -q "^GRUB_GFXPAYLOAD_LINUX=" "$GRUB_CONFIG"; then
-        sed -i 's|^GRUB_GFXPAYLOAD_LINUX=.*|GRUB_GFXPAYLOAD_LINUX=keep|' "$GRUB_CONFIG"
-    else
+    # 3. Fix hybrid GPU post-menu flicker (keep framebuffer resolution).
+    # NOTE: 'keep' is safe on this system — Intel iGPU 8086:a78b is NOT blacklisted.
+    if ! grep -q "^GRUB_GFXPAYLOAD_LINUX=" "$GRUB_CONFIG"; then
         echo 'GRUB_GFXPAYLOAD_LINUX=keep' >> "$GRUB_CONFIG"
     fi
+    
+    # 4. Fix boot slowdown: 98_mintsysadm.cfg forcibly sets GRUB_TIMEOUT=-1 (wait forever).
+    # We write a 99_grub_custom_looks.cfg that sorts AFTER it (99 > 98) and restores
+    # a 10-second countdown so GRUB auto-boots without user input.
+    local dropin="/etc/default/grub.d/99_grub_custom_looks.cfg"
+    cat > "$dropin" << 'EOF'
+# Written by grub_custom-looks/manage.sh
+# Overrides 98_mintsysadm.cfg's GRUB_TIMEOUT=-1 to restore auto-boot countdown.
+GRUB_TIMEOUT=10
+EOF
+    success "Auto-boot timeout set to 10 seconds"
     
     # 4. THE REAL GLITCH FIX — Neuter 05_debian_theme's forced color injection
     # /etc/grub.d/05_debian_theme is run by grub-mkconfig AFTER 00_header sets the theme.
