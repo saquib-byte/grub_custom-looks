@@ -13,9 +13,6 @@ mkdir -p "$THEMES_DIR"
 declare -A REPOS=(
     ["darkmatter"]="https://github.com/VandalByte/darkmatter-grub2-theme.git"
     ["elegant"]="https://github.com/vinceliuice/Elegant-grub2-themes.git"
-    ["sleek"]="https://github.com/sandesh236/sleek--themes.git"
-    ["grub2-themes"]="https://github.com/vinceliuice/grub2-themes.git"
-    ["catppuccin"]="https://github.com/catppuccin/grub.git"
     ["Gorgeous-GRUB-reference"]="https://github.com/Jacksaur/Gorgeous-GRUB.git"
 )
 

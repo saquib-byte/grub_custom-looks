@@ -5,7 +5,7 @@ This repository allows you to easily download and manage multiple awesome GRUB t
 ## Getting Started
 
 1. **Download / Update Themes**
-   Run the downloader script to fetch all configured repositories into the `themes/` folder:
+   Run the downloader script to fetch the configured repositories into the `themes/` folder:
    ```bash
    chmod +x get-themes.sh
    ./get-themes.sh
@@ -24,7 +24,7 @@ A highly customizable, sci-fi inspired theme with 47 OS-specific variants.
   cd themes/darkmatter
   sudo python3 darkmatter-theme.py -i
   ```
-- **Details:** The interactive Python installer will ask you to choose your OS style, resolution, and icon set.
+- **Details:** The interactive Python installer will launch in your terminal. It will ask you to type the number corresponding to your desired OS style, resolution, and icon set, and will apply it directly to GRUB.
 
 ### 2. Elegant Themes
 A modular theme engine featuring multiple layouts (window, float, blur, sharp) and styles.
@@ -34,38 +34,14 @@ A modular theme engine featuring multiple layouts (window, float, blur, sharp) a
   cd themes/elegant
   sudo ./install.sh
   ```
-- **Details:** Running the script without arguments will launch a TUI wizard. You can also use flags (e.g., `sudo ./install.sh -t forest -p blur -s 1080p`). Run `./install.sh -h` to see all options.
-
-### 3. Vinceliuice GRUB2 Themes (Tela, Vimix, Stylish, WhiteSur)
-A collection of sleek, modern themes.
-- **Path:** `themes/grub2-themes/`
-- **Installation:**
+- **Details:** Running the script without arguments will launch an interactive graphical wizard right in your terminal, allowing you to select your preferred background, layout style, side, and resolution. 
+  
+  Alternatively, you can skip the wizard and use flags:
   ```bash
-  cd themes/grub2-themes
-  sudo ./install.sh -b -t whitesur  # Example: Install WhiteSur
+  sudo ./install.sh -t forest -p blur -s 1080p
   ```
-- **Details:** Check the repo's README for available theme names and icon options.
+  Run `./install.sh -h` to see all available customization flags.
 
-### 4. Sleek Themes
-Minimalist themes available in Dark, Light, and Orange variants.
-- **Path:** `themes/sleek/`
-- **Installation:**
-  Sleek themes do not come with an installer script. You can manually copy the theme folder to your GRUB themes directory and edit `/etc/default/grub`.
-  ```bash
-  sudo cp -r "themes/sleek/Sleek theme-dark" /boot/grub/themes/
-  # Then set GRUB_THEME="/boot/grub/themes/Sleek theme-dark/theme.txt" in /etc/default/grub
-  # Finally run: sudo update-grub
-  ```
-
-### 5. Catppuccin
-Soothing pastel themes based on the Catppuccin palette.
-- **Path:** `themes/catppuccin/`
-- **Installation:**
-  ```bash
-  cd themes/catppuccin
-  sudo ./install.sh mocha  # Or latte, frappe, macchiato
-  ```
-
-### 6. Gorgeous-GRUB (Reference Catalog)
+### 3. Gorgeous-GRUB (Reference Catalog)
 - **Path:** `themes/Gorgeous-GRUB-reference/`
 - **Details:** This is a curated showcase/index of many community themes (e.g., Minecraft, Persona 5, Cyberpunk). It does not contain an installer itself. Use it as a catalog to discover new themes, then download and install them manually following their respective instructions.
