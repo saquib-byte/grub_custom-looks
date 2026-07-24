@@ -379,6 +379,32 @@ set_grub_theme() {
         echo 'GRUB_GFXPAYLOAD_LINUX=keep' >> "$GRUB_CONFIG"
     fi
     
+    # 4. THE REAL GLITCH FIX — Neuter 05_debian_theme's forced color injection
+    # /etc/grub.d/05_debian_theme is run by grub-mkconfig AFTER 00_header sets the theme.
+    # For Ubuntu/Kubuntu distributors (which Linux Mint fakes as), it always runs
+    # set_default_theme() which writes:
+    #   set menu_color_normal=white/black
+    #   set menu_color_highlight=black/light-gray
+    # These GLOBAL color overrides destroy a custom theme's transparency,
+    # producing white/grey boxes around all text items. This is the root cause.
+    # Fix: inject an early-exit guard at the top of the script so it does nothing
+    # when a proper GRUB_THEME is already configured.
+    local debian_theme="/etc/grub.d/05_debian_theme"
+    if [[ -f "$debian_theme" ]] && ! grep -q "GRUB_THEME_EARLY_EXIT_GUARD" "$debian_theme"; then
+        # Back up original first
+        cp "$debian_theme" "${debian_theme}.bak" 2>/dev/null || true
+        # Inject guard after the shebang line
+        sed -i '2a\
+\
+# GRUB_THEME_EARLY_EXIT_GUARD — added by grub_custom-looks/manage.sh\
+# When a proper GRUB_THEME is configured, this script must not inject\
+# Ubuntu hardcoded menu colors that destroy theme transparency.\
+. /etc/default/grub 2>/dev/null || true\
+if [ -n "${GRUB_THEME}" ] && [ -f "${GRUB_THEME}" ]; then exit 0; fi\
+' "$debian_theme"
+        success "Patched 05_debian_theme to respect custom themes"
+    fi
+    
     success "GRUB_THEME set → $theme_path"
 }
 
